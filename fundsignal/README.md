@@ -1,4 +1,4 @@
-# FundSignal — Funding Intelligence Dashboard
+# FundedLead — Funding Intelligence Dashboard
 
 A real-time funding intelligence tool for SDRs. Scans 6 concurrent news queries via Serper API to surface companies that just announced funding rounds, then lets you queue them for outreach.
 
@@ -64,7 +64,7 @@ Open [http://localhost:5173](http://localhost:5173) and click **Scan for New Rou
 
 ```bash
 git add .
-git commit -m "Add FundSignal"
+git commit -m "Add FundedLead"
 git push origin main
 ```
 
@@ -83,7 +83,7 @@ git push origin main
 
 ### Step 4 — Deploy
 
-Click **Deploy**. Done. Your FundSignal app is live.
+Click **Deploy**. Done. Your FundedLead app is live.
 
 > **Note:** The Outreach Queue persists in `localStorage` on the browser. On Vercel, the server-side queue is ephemeral (resets on each deploy) — use the Export CSV button to back up your queue.
 

@@ -182,7 +182,7 @@ app.patch('/api/queue/:id', (req, res) => {
 // ---------------------------------------------------------------------------
 const PORT = process.env.PORT || 3001;
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`FundSignal server → http://localhost:${PORT}`));
+  app.listen(PORT, () => console.log(`FundedLead server → http://localhost:${PORT}`));
 }
 
 module.exports = app;
