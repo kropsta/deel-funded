@@ -11,9 +11,6 @@ app.use(express.json());
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 const SERPER_URL = 'https://google.serper.dev/news';
 
-// Appended to every query to suppress non-tech noise
-const NEGATIVE_KEYWORDS = '-horse -racing -thoroughbred -racetrack -jockey -derby -handicap -stallion -filly -gelding -furlong -paddock -turf -equine';
-
 const QUERIES = [
   // Core funding language
   '"raises funding round" OR "closes funding round" OR "secures funding"',
@@ -44,7 +41,7 @@ const QUERIES = [
   // Early-stage & stealth launches
   '"exits stealth" "raises" OR "emerges from stealth" "funding" OR "launches with funding"',
   '"venture capital investment" OR "venture-backed" "raises" OR "VC-backed" "funding round"',
-].map((q) => `${q} ${NEGATIVE_KEYWORDS}`);
+];
 
 // ---------------------------------------------------------------------------
 // Server-side content filter — catches anything that slips past Serper
