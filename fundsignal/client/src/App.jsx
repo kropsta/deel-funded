@@ -59,6 +59,7 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [lastScan, setLastScan] = useState(null);
   const [toasts, setToasts] = useState([]);
+  const [queryCount, setQueryCount] = useState(20);
   const [filters, setFilters] = useState({ roundType: 'All', timeRange: '7d', search: '' });
   const [queue, setQueue] = useState(loadQueue);
 
@@ -83,6 +84,7 @@ export default function App() {
       const data = await res.json();
       setResults(data.results || []);
       setLastScan(new Date());
+      if (data.queriesRun) setQueryCount(data.queriesRun);
       showToast(`${data.count} companies found`, 'success');
     } catch (err) {
       showToast(`Scan failed: ${err.message}`, 'error');
@@ -126,7 +128,7 @@ export default function App() {
             SDR Intelligence
           </span>
         </div>
-        <ScanButton scanning={scanning} onScan={handleScan} />
+        <ScanButton scanning={scanning} onScan={handleScan} queryCount={queryCount} />
       </header>
 
       {/* ── Tabs ───────────────────────────────────────────────────────── */}

@@ -12,13 +12,39 @@ const SERPER_API_KEY = process.env.SERPER_API_KEY;
 const SERPER_URL = 'https://google.serper.dev/news';
 
 const QUERIES = [
+  // Core funding language
   '"raises funding round" OR "closes funding round" OR "secures funding"',
   '"Series A funding" OR "Series B funding" OR "Series C funding" OR "seed round"',
-  '"startup raises" OR "startup backed by" OR "venture capital investment"',
-  '"pre-seed funding" OR "angel round" OR "bridge round" OR "growth round"',
+  '"Series D funding" OR "Series E funding" OR "late-stage funding" OR "growth equity"',
+  '"pre-seed funding" OR "pre-seed round" OR "seed stage funding" OR "seed investment"',
   '"announces funding" OR "raises million" OR "raises billion" OR "oversubscribed round"',
+
+  // Verb variations journalists use
+  '"startup raises" OR "startup backed by" OR "startup secures" OR "startup lands"',
+  '"lands funding" OR "nets funding" OR "nabs funding" OR "bags funding" OR "pulls in funding"',
+  '"raises seed" OR "raises Series A" OR "raises Series B" OR "raises Series C"',
+  '"secures investment" OR "secures capital" OR "closes investment" OR "closes capital raise"',
+  '"investment round" OR "financing round" OR "capital raise" OR "equity financing"',
+
+  // Lead investor signals
   '"led by" "venture" "raises" OR "backed by" "investors" "funding"',
+  '"led by" "Capital" "million" OR "led by" "Ventures" "million" OR "led by" "Partners" "million"',
+  '"backed by Sequoia" OR "backed by Andreessen" OR "backed by Y Combinator" OR "backed by General Catalyst"',
+  '"backed by Accel" OR "backed by Tiger Global" OR "backed by Lightspeed" OR "backed by Bessemer"',
+
+  // Industry-vertical funding
+  '"AI startup" "raises" OR "AI company" "raises" OR "artificial intelligence" "funding round"',
+  '"fintech" "raises" "million" OR "healthtech" "raises" "million" OR "SaaS" "raises" "million"',
+  '"cleantech" "raises" OR "climate tech" "raises" OR "edtech" "raises" OR "proptech" "raises"',
+  '"cybersecurity" "funding" OR "biotech" "funding round" OR "medtech" "raises" OR "insurtech" "raises"',
+
+  // Early-stage & stealth launches
+  '"exits stealth" "raises" OR "emerges from stealth" "funding" OR "launches with funding"',
+  '"venture capital investment" OR "venture-backed" "raises" OR "VC-backed" "funding round"',
 ];
+
+// Total query count exposed for the loading message
+const QUERY_COUNT = QUERIES.length;
 
 // Parse relative Serper dates ("3 hours ago", "2 days ago") into ISO strings
 function parseDate(dateStr) {
@@ -150,7 +176,7 @@ app.post('/api/scan', async (req, res) => {
       return new Date(b.publishedDate) - new Date(a.publishedDate);
     });
 
-    res.json({ results: unique, count: unique.length });
+    res.json({ results: unique, count: unique.length, queriesRun: QUERY_COUNT });
   } catch (err) {
     console.error('Scan error:', err.message);
     res.status(500).json({ error: 'Scan failed', details: err.message });

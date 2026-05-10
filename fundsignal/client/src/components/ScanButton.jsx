@@ -1,4 +1,4 @@
-export default function ScanButton({ scanning, onScan }) {
+export default function ScanButton({ scanning, onScan, queryCount = 20 }) {
   return (
     <button
       onClick={onScan}
@@ -19,7 +19,7 @@ export default function ScanButton({ scanning, onScan }) {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
             />
           </svg>
-          Scanning 6 news sources…
+          Scanning {queryCount} queries…
         </>
       ) : (
         <>
