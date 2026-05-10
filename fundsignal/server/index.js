@@ -11,6 +11,9 @@ app.use(express.json());
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 const SERPER_URL = 'https://google.serper.dev/news';
 
+// Appended to every query to suppress non-tech noise
+const NEGATIVE_KEYWORDS = '-horse -racing -thoroughbred -racetrack -jockey -derby -handicap -stallion -filly -gelding -furlong -paddock -turf -equine';
+
 const QUERIES = [
   // Core funding language
   '"raises funding round" OR "closes funding round" OR "secures funding"',
@@ -41,7 +44,32 @@ const QUERIES = [
   // Early-stage & stealth launches
   '"exits stealth" "raises" OR "emerges from stealth" "funding" OR "launches with funding"',
   '"venture capital investment" OR "venture-backed" "raises" OR "VC-backed" "funding round"',
+].map((q) => `${q} ${NEGATIVE_KEYWORDS}`);
+
+// ---------------------------------------------------------------------------
+// Server-side content filter — catches anything that slips past Serper
+// ---------------------------------------------------------------------------
+const BLOCKLIST_DOMAINS = [
+  'brisnet.com', 'bloodhorse.com', 'turfdiario', 'thoroughbreddailynews.com',
+  'drf.com', 'equibase.com', 'paulickreport.com', 'horseracing.net',
+  'racingpost.com', 'attheraces.com', 'timeform.com',
 ];
+
+const BLOCKLIST_KEYWORDS = [
+  'kentucky derby', 'preakness', 'belmont stakes', 'breeders cup',
+  'horse racing', 'thoroughbred', 'racehorse', 'racetrack', 'aqueduct',
+  'churchill downs', 'saratoga', 'santa anita', 'del mar',
+  'jockey', 'trainer', 'handicapper', 'furlong', 'stallion', 'filly', 'gelding',
+];
+
+function isBlocked(item) {
+  const domain = (item.link || '').toLowerCase();
+  const text = `${item.title} ${item.snippet || ''}`.toLowerCase();
+  return (
+    BLOCKLIST_DOMAINS.some((d) => domain.includes(d)) ||
+    BLOCKLIST_KEYWORDS.some((kw) => text.includes(kw))
+  );
+}
 
 // Total query count exposed for the loading message
 const QUERY_COUNT = QUERIES.length;
@@ -157,12 +185,12 @@ app.post('/api/scan', async (req, res) => {
       if (r.status === 'fulfilled') allItems.push(...r.value);
     });
 
-    // Deduplicate by URL
+    // Deduplicate by URL and strip blocked content
     const seen = new Set();
     const unique = [];
     let counter = 0;
     for (const item of allItems) {
-      if (!seen.has(item.link)) {
+      if (!seen.has(item.link) && !isBlocked(item)) {
         seen.add(item.link);
         unique.push(parseResult(item, `r${counter++}`));
       }
