@@ -199,15 +199,24 @@ app.post('/api/scan', async (req, res) => {
       if (r.status === 'fulfilled') allItems.push(...r.value);
     });
 
-    // Deduplicate by URL and strip blocked content
-    const seen = new Set();
+    // Deduplicate by URL — prefer the copy that carries a roundHint
+    // so pre-seed/seed queries always win over generic ones for the same article
+    const itemMap = new Map();
+    for (const item of allItems) {
+      if (isBlocked(item)) continue;
+      const existing = itemMap.get(item.link);
+      if (!existing) {
+        itemMap.set(item.link, item);
+      } else if (!existing._hint && item._hint) {
+        // Upgrade to the hinted version
+        itemMap.set(item.link, item);
+      }
+    }
+
     const unique = [];
     let counter = 0;
-    for (const item of allItems) {
-      if (!seen.has(item.link) && !isBlocked(item)) {
-        seen.add(item.link);
-        unique.push(parseResult(item, `r${counter++}`));
-      }
+    for (const item of itemMap.values()) {
+      unique.push(parseResult(item, `r${counter++}`));
     }
 
     // Sort newest first
