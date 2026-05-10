@@ -4,13 +4,12 @@ export default function MetricsBar({ total, capital, queued, lastScan }) {
 
   const metrics = [
     { label: 'Rounds Found', value: total || '0', icon: '📡' },
-    { label: 'Capital Raised', value: capital || '—', icon: '💰' },
     { label: 'In Outreach Queue', value: queued || '0', icon: '📋' },
     { label: 'Last Scan', value: formatTime(lastScan), icon: '🕐' },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       {metrics.map(({ label, value, icon }) => (
         <div
           key={label}

@@ -1,8 +1,9 @@
-const ROUND_TYPES = ['All', 'Seed', 'Pre-Seed', 'Series A', 'Series B', 'Series C+', 'Angel', 'Bridge', 'Growth'];
+const ROUND_TYPES = ['All', 'Seed', 'Pre-Seed', 'Series A', 'Series B', 'Series C+'];
 const TIME_RANGES = [
   { label: 'Last 24h', value: '1d' },
   { label: 'Last 7 Days', value: '7d' },
   { label: 'Last 30 Days', value: '30d' },
+  { label: 'Last 90 Days', value: '90d' },
 ];
 
 function Pill({ active, onClick, children }) {
