@@ -11,36 +11,38 @@ app.use(express.json());
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 const SERPER_URL = 'https://google.serper.dev/news';
 
+// Each query carries a roundHint used as fallback when the headline
+// doesn't explicitly name the round type.
 const QUERIES = [
   // Core funding language
-  '"raises funding round" OR "closes funding round" OR "secures funding"',
-  '"Series A funding" OR "Series B funding" OR "Series C funding" OR "seed round"',
-  '"Series D funding" OR "Series E funding" OR "late-stage funding" OR "growth equity"',
-  '"pre-seed funding" OR "pre-seed round" OR "seed stage funding" OR "seed investment"',
-  '"announces funding" OR "raises million" OR "raises billion" OR "oversubscribed round"',
+  { q: '"raises funding round" OR "closes funding round" OR "secures funding"',            hint: null },
+  { q: '"Series A funding" OR "Series B funding" OR "Series C funding" OR "seed round"',  hint: 'Seed' },
+  { q: '"Series D funding" OR "Series E funding" OR "late-stage funding" OR "growth equity"', hint: 'Series C+' },
+  { q: '"pre-seed funding" OR "pre-seed round" OR "seed stage funding" OR "seed investment"', hint: 'Pre-Seed' },
+  { q: '"announces funding" OR "raises million" OR "raises billion" OR "oversubscribed round"', hint: null },
 
   // Verb variations journalists use
-  '"startup raises" OR "startup backed by" OR "startup secures" OR "startup lands"',
-  '"lands funding" OR "nets funding" OR "nabs funding" OR "bags funding" OR "pulls in funding"',
-  '"raises seed" OR "raises Series A" OR "raises Series B" OR "raises Series C"',
-  '"secures investment" OR "secures capital" OR "closes investment" OR "closes capital raise"',
-  '"investment round" OR "financing round" OR "capital raise" OR "equity financing"',
+  { q: '"startup raises" OR "startup backed by" OR "startup secures" OR "startup lands"',  hint: null },
+  { q: '"lands funding" OR "nets funding" OR "nabs funding" OR "bags funding" OR "pulls in funding"', hint: null },
+  { q: '"raises seed" OR "raises Series A" OR "raises Series B" OR "raises Series C"',    hint: 'Seed' },
+  { q: '"secures investment" OR "secures capital" OR "closes investment" OR "closes capital raise"', hint: null },
+  { q: '"investment round" OR "financing round" OR "capital raise" OR "equity financing"', hint: null },
 
   // Lead investor signals
-  '"led by" "venture" "raises" OR "backed by" "investors" "funding"',
-  '"led by" "Capital" "million" OR "led by" "Ventures" "million" OR "led by" "Partners" "million"',
-  '"backed by Sequoia" OR "backed by Andreessen" OR "backed by Y Combinator" OR "backed by General Catalyst"',
-  '"backed by Accel" OR "backed by Tiger Global" OR "backed by Lightspeed" OR "backed by Bessemer"',
+  { q: '"led by" "venture" "raises" OR "backed by" "investors" "funding"',                hint: null },
+  { q: '"led by" "Capital" "million" OR "led by" "Ventures" "million" OR "led by" "Partners" "million"', hint: null },
+  { q: '"backed by Sequoia" OR "backed by Andreessen" OR "backed by Y Combinator" OR "backed by General Catalyst"', hint: null },
+  { q: '"backed by Accel" OR "backed by Tiger Global" OR "backed by Lightspeed" OR "backed by Bessemer"', hint: null },
 
   // Industry-vertical funding
-  '"AI startup" "raises" OR "AI company" "raises" OR "artificial intelligence" "funding round"',
-  '"fintech" "raises" "million" OR "healthtech" "raises" "million" OR "SaaS" "raises" "million"',
-  '"cleantech" "raises" OR "climate tech" "raises" OR "edtech" "raises" OR "proptech" "raises"',
-  '"cybersecurity" "funding" OR "biotech" "funding round" OR "medtech" "raises" OR "insurtech" "raises"',
+  { q: '"AI startup" "raises" OR "AI company" "raises" OR "artificial intelligence" "funding round"', hint: null },
+  { q: '"fintech" "raises" "million" OR "healthtech" "raises" "million" OR "SaaS" "raises" "million"', hint: null },
+  { q: '"cleantech" "raises" OR "climate tech" "raises" OR "edtech" "raises" OR "proptech" "raises"', hint: null },
+  { q: '"cybersecurity" "funding" OR "biotech" "funding round" OR "medtech" "raises" OR "insurtech" "raises"', hint: null },
 
   // Early-stage & stealth launches
-  '"exits stealth" "raises" OR "emerges from stealth" "funding" OR "launches with funding"',
-  '"venture capital investment" OR "venture-backed" "raises" OR "VC-backed" "funding round"',
+  { q: '"exits stealth" "raises" OR "emerges from stealth" "funding" OR "launches with funding"', hint: 'Pre-Seed' },
+  { q: '"venture capital investment" OR "venture-backed" "raises" OR "VC-backed" "funding round"', hint: null },
 ];
 
 // ---------------------------------------------------------------------------
@@ -139,13 +141,16 @@ function parseCompanyName(title) {
 
 function parseResult(item, id) {
   const text = `${item.title} ${item.snippet || ''}`;
+  const detectedRound = parseRoundType(text);
+  // Use the query hint as fallback only when detection returns Unknown
+  const roundType = detectedRound !== 'Unknown' ? detectedRound : (item._hint || 'Unknown');
   return {
     id,
     companyName: parseCompanyName(item.title),
     title: item.title,
     snippet: item.snippet || '',
     amount: parseAmount(text),
-    roundType: parseRoundType(text),
+    roundType,
     industry: parseIndustry(text),
     source: item.source || 'Unknown',
     publishedDate: parseDate(item.date),
@@ -162,16 +167,17 @@ const TBS_MAP = {
   '90d': 'qdr:y', // Serper has no 90d option; use year and let client filter to 90d
 };
 
-async function runQuery(query, tbs = 'qdr:w') {
+async function runQuery({ q, hint }, tbs = 'qdr:w') {
   const res = await axios.post(
     SERPER_URL,
-    { q: query, tbs, num: 20 },
+    { q, tbs, num: 20 },
     {
       headers: { 'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json' },
       timeout: 12000,
     }
   );
-  return res.data.news || [];
+  // Tag every result with the query hint so parseResult can use it
+  return (res.data.news || []).map((item) => ({ ...item, _hint: hint }));
 }
 
 // ---------------------------------------------------------------------------
