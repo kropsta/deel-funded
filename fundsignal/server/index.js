@@ -154,10 +154,18 @@ function parseResult(item, id) {
   };
 }
 
-async function runQuery(query) {
+// Map frontend time range keys to Serper tbs values
+const TBS_MAP = {
+  '1d':  'qdr:d',
+  '7d':  'qdr:w',
+  '30d': 'qdr:m',
+  '90d': 'qdr:y', // Serper has no 90d option; use year and let client filter to 90d
+};
+
+async function runQuery(query, tbs = 'qdr:w') {
   const res = await axios.post(
     SERPER_URL,
-    { q: query, tbs: 'qdr:w', num: 10 },
+    { q: query, tbs, num: 20 },
     {
       headers: { 'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json' },
       timeout: 12000,
@@ -174,8 +182,11 @@ app.post('/api/scan', async (req, res) => {
     return res.status(500).json({ error: 'SERPER_API_KEY is not configured on the server.' });
   }
 
+  const { timeRange = '7d' } = req.body || {};
+  const tbs = TBS_MAP[timeRange] || 'qdr:w';
+
   try {
-    const settled = await Promise.allSettled(QUERIES.map(runQuery));
+    const settled = await Promise.allSettled(QUERIES.map((q) => runQuery(q, tbs)));
 
     const allItems = [];
     settled.forEach((r) => {
