@@ -12,47 +12,56 @@ const SERPER_API_KEY = process.env.SERPER_API_KEY;
 const SERPER_NEWS_URL   = 'https://google.serper.dev/news';
 const SERPER_SEARCH_URL = 'https://google.serper.dev/search';
 
-// Each query carries a roundHint used as fallback when the headline
-// doesn't explicitly name the round type.
+// Each query carries a roundHint (fallback round classification) and
+// a region tag (inherited by all results from that query).
 const QUERIES = [
-  // Core funding language
-  { q: '"raises funding round" OR "closes funding round" OR "secures funding"',              hint: null },
-  { q: '"Series A funding" OR "Series B funding" OR "Series C funding" OR "seed round"',    hint: 'Seed' },
-  { q: '"Series D funding" OR "Series E funding" OR "late-stage funding" OR "growth equity"', hint: 'Series C+' },
-  { q: '"pre-seed funding" OR "pre-seed round" OR "seed stage funding" OR "seed investment"', hint: 'Pre-Seed' },
-  { q: '"announces funding" OR "raises million" OR "raises billion" OR "oversubscribed round"', hint: null },
+  // Core funding language — global
+  { q: '"raises funding round" OR "closes funding round" OR "secures funding"',               hint: null,       region: null },
+  { q: '"Series A funding" OR "Series B funding" OR "Series C funding" OR "seed round"',     hint: 'Seed',     region: null },
+  { q: '"Series D funding" OR "Series E funding" OR "late-stage funding" OR "growth equity"', hint: 'Series C+', region: null },
+  { q: '"pre-seed funding" OR "pre-seed round" OR "seed stage funding" OR "seed investment"', hint: 'Pre-Seed', region: null },
+  { q: '"announces funding" OR "raises million" OR "raises billion" OR "oversubscribed round"', hint: null,     region: null },
 
-  // Verb variations journalists use
-  { q: '"startup raises" OR "startup backed by" OR "startup secures" OR "startup lands"',   hint: null },
-  { q: '"lands funding" OR "nets funding" OR "nabs funding" OR "bags funding" OR "pulls in funding"', hint: null },
-  { q: '"raises seed" OR "raises Series A" OR "raises Series B" OR "raises Series C"',     hint: 'Seed' },
-  { q: '"secures investment" OR "secures capital" OR "closes investment" OR "closes capital raise"', hint: null },
-  { q: '"investment round" OR "financing round" OR "capital raise" OR "equity financing"',  hint: null },
+  // Verb variations journalists use — global
+  { q: '"startup raises" OR "startup backed by" OR "startup secures" OR "startup lands"',    hint: null, region: null },
+  { q: '"lands funding" OR "nets funding" OR "nabs funding" OR "bags funding" OR "pulls in funding"', hint: null, region: null },
+  { q: '"raises seed" OR "raises Series A" OR "raises Series B" OR "raises Series C"',      hint: 'Seed', region: null },
+  { q: '"secures investment" OR "secures capital" OR "closes investment" OR "closes capital raise"', hint: null, region: null },
+  { q: '"investment round" OR "financing round" OR "capital raise" OR "equity financing"',   hint: null, region: null },
 
-  // Lead investor signals
-  { q: '"led by" "venture" "raises" OR "backed by" "investors" "funding"',                 hint: null },
-  { q: '"led by" "Capital" "million" OR "led by" "Ventures" "million" OR "led by" "Partners" "million"', hint: null },
-  { q: '"backed by Sequoia" OR "backed by Andreessen" OR "backed by Y Combinator" OR "backed by General Catalyst"', hint: null },
-  { q: '"backed by Accel" OR "backed by Tiger Global" OR "backed by Lightspeed" OR "backed by Bessemer"', hint: null },
+  // Lead investor signals — global
+  { q: '"led by" "venture" "raises" OR "backed by" "investors" "funding"',                  hint: null, region: null },
+  { q: '"led by" "Capital" "million" OR "led by" "Ventures" "million" OR "led by" "Partners" "million"', hint: null, region: null },
+  { q: '"backed by Sequoia" OR "backed by Andreessen" OR "backed by Y Combinator" OR "backed by General Catalyst"', hint: null, region: null },
+  { q: '"backed by Accel" OR "backed by Tiger Global" OR "backed by Lightspeed" OR "backed by Bessemer"', hint: null, region: null },
 
-  // Industry-vertical funding
-  { q: '"AI startup" "raises" OR "AI company" "raises" OR "artificial intelligence" "funding round"', hint: null },
-  { q: '"fintech" "raises" "million" OR "healthtech" "raises" "million" OR "SaaS" "raises" "million"', hint: null },
-  { q: '"cleantech" "raises" OR "climate tech" "raises" OR "edtech" "raises" OR "proptech" "raises"', hint: null },
-  { q: '"cybersecurity" "funding" OR "biotech" "funding round" OR "medtech" "raises" OR "insurtech" "raises"', hint: null },
+  // Industry-vertical funding — global
+  { q: '"AI startup" "raises" OR "AI company" "raises" OR "artificial intelligence" "funding round"', hint: null, region: null },
+  { q: '"fintech" "raises" "million" OR "healthtech" "raises" "million" OR "SaaS" "raises" "million"', hint: null, region: null },
+  { q: '"cleantech" "raises" OR "climate tech" "raises" OR "edtech" "raises" OR "proptech" "raises"', hint: null, region: null },
+  { q: '"cybersecurity" "funding" OR "biotech" "funding round" OR "medtech" "raises" OR "insurtech" "raises"', hint: null, region: null },
 
-  // Early-stage & stealth launches
-  { q: '"exits stealth" "raises" OR "emerges from stealth" "funding" OR "launches with funding"', hint: 'Pre-Seed' },
-  { q: '"venture capital investment" OR "venture-backed" "raises" OR "VC-backed" "funding round"', hint: null },
+  // Early-stage & stealth — global
+  { q: '"exits stealth" "raises" OR "emerges from stealth" "funding" OR "launches with funding"', hint: 'Pre-Seed', region: null },
+  { q: '"venture capital investment" OR "venture-backed" "raises" OR "VC-backed" "funding round"', hint: null, region: null },
 
-  // Regional — US cities
-  { q: '"New York startup" "raises" OR "San Francisco startup" "raises" OR "Austin startup" "raises"', hint: null },
-  { q: '"Boston startup" "raises" OR "Seattle startup" "raises" OR "Los Angeles startup" "raises"', hint: null },
+  // Regional — North America
+  { q: '"New York startup" "raises" OR "San Francisco startup" "raises" OR "Austin startup" "raises"', hint: null, region: 'North America' },
+  { q: '"Boston startup" "raises" OR "Seattle startup" "raises" OR "Los Angeles startup" "raises" OR "Toronto startup" "raises"', hint: null, region: 'North America' },
 
-  // Regional — international
-  { q: '"UK startup" "raises" OR "London startup" "raises" OR "British startup" "funding"', hint: null },
-  { q: '"European startup" "raises" OR "Berlin startup" "raises" OR "Paris startup" "raises"', hint: null },
-  { q: '"India startup" "raises" OR "Singapore startup" "raises" OR "Australia startup" "raises" OR "Canada startup" "raises"', hint: null },
+  // Regional — Europe
+  { q: '"UK startup" "raises" OR "London startup" "raises" OR "British startup" "funding"',  hint: null, region: 'Europe' },
+  { q: '"European startup" "raises" OR "Berlin startup" "raises" OR "Paris startup" "raises" OR "Amsterdam startup" "raises"', hint: null, region: 'Europe' },
+
+  // Regional — Asia-Pacific
+  { q: '"India startup" "raises" OR "Singapore startup" "raises" OR "Australia startup" "raises"', hint: null, region: 'Asia-Pacific' },
+  { q: '"Japan startup" "raises" OR "Korea startup" "raises" OR "Southeast Asia startup" "raises"', hint: null, region: 'Asia-Pacific' },
+
+  // Regional — Latin America
+  { q: '"Brazil startup" "raises" OR "Latin America startup" "raises" OR "Argentina startup" "raises" OR "Mexico startup" "raises"', hint: null, region: 'Latin America' },
+
+  // Regional — Middle East & Africa
+  { q: '"Tel Aviv startup" "raises" OR "Israel startup" "raises" OR "Dubai startup" "raises" OR "Africa startup" "raises"', hint: null, region: 'Middle East & Africa' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -150,10 +159,22 @@ function parseCompanyName(title) {
   return title.split(/\s+/).slice(0, 4).join(' ');
 }
 
+// Region detection: query tag wins; falls back to city/country keyword matching.
+function parseRegion(text, queryRegion) {
+  if (queryRegion) return queryRegion;
+  const t = text.toLowerCase();
+  if (/new york|san francisco|silicon valley|\baustin\b|\bboston\b|\bseattle\b|los angeles|chicago|miami|\bdenver\b|\batlanta\b|toronto|vancouver|montreal|\bcanada\b|canadian|united states|\bus startup\b|north america/.test(t)) return 'North America';
+  if (/\blondon\b|united kingdom|\buk startup\b|british startup|berlin|paris|amsterdam|stockholm|\bdublin\b|\bmadrid\b|\bmilan\b|\bzurich\b|helsinki|copenhagen|\boslo\b|\blisbon\b|\bwarsaw\b|\bbrussels\b|\bvienna\b|\btallinn\b|\beuropean startup\b/.test(t)) return 'Europe';
+  if (/\bindia\b|bangalore|bengaluru|\bmumbai\b|\bdelhi\b|singapore|australia|sydney|melbourne|\btokyo\b|\bjapan\b|south korea|\bseoul\b|beijing|shanghai|hong kong|taiwan|jakarta|indonesia|kuala lumpur|malaysia|vietnam|philippines|southeast asia|\bapac\b/.test(t)) return 'Asia-Pacific';
+  if (/\bbrazil\b|sao paulo|são paulo|\bargentina\b|buenos aires|colombia|\bchile\b|\bsantiago\b|\bperu\b|latin america|\blatam\b|mexico city/.test(t)) return 'Latin America';
+  if (/tel aviv|\bisrael\b|israeli|\bdubai\b|\buae\b|abu dhabi|saudi|riyadh|\bcairo\b|\begypt\b|\blagos\b|nigeria|nairobi|\bkenya\b|johannesburg|south africa|istanbul|\bturkey\b|\bqatar\b|\bdoha\b|middle east|\bmena\b/.test(t)) return 'Middle East & Africa';
+  return 'Global';
+}
+
 function parseResult(item, id) {
-  const text         = `${item.title} ${item.snippet || ''}`;
+  const text          = `${item.title} ${item.snippet || ''}`;
   const detectedRound = parseRoundType(text);
-  const roundType    = detectedRound !== 'Unknown' ? detectedRound : (item._hint || 'Unknown');
+  const roundType     = detectedRound !== 'Unknown' ? detectedRound : (item._hint || 'Unknown');
   return {
     id,
     companyName:   parseCompanyName(item.title),
@@ -162,6 +183,7 @@ function parseResult(item, id) {
     amount:        parseAmount(text),
     roundType,
     industry:      parseIndustry(text),
+    region:        parseRegion(text, item._region),
     source:        item.source || 'Unknown',
     publishedDate: parseDate(item.date),
     rawDate:       item.date || null,
@@ -199,7 +221,7 @@ async function findLinkedIn(companyName) {
 // ---------------------------------------------------------------------------
 const TBS_MAP = { '1d': 'qdr:d', '7d': 'qdr:w', '30d': 'qdr:m' };
 
-async function runQuery({ q, hint }, tbs = 'qdr:w') {
+async function runQuery({ q, hint, region }, tbs = 'qdr:w') {
   const res = await axios.post(
     SERPER_NEWS_URL,
     { q, tbs, num: 10 },
@@ -211,7 +233,7 @@ async function runQuery({ q, hint }, tbs = 'qdr:w') {
   if (!res.data.news) {
     console.error('Serper news missing:', JSON.stringify(res.data).slice(0, 200));
   }
-  return (res.data.news || []).map((item) => ({ ...item, _hint: hint }));
+  return (res.data.news || []).map((item) => ({ ...item, _hint: hint, _region: region }));
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +258,8 @@ app.post('/api/scan', async (req, res) => {
     });
     console.log(`Queries: ${settled.length - failCount} ok, ${failCount} failed. Raw items: ${allItems.length}`);
 
-    // 2. Deduplicate — prefer the copy that carries a roundHint
+    // 2. Deduplicate — prefer the copy with a roundHint; also rescue a region
+    //    tag from whichever copy has one when the winner lacks it.
     const itemMap = new Map();
     for (const item of allItems) {
       if (isBlocked(item)) continue;
@@ -244,7 +267,11 @@ app.post('/api/scan', async (req, res) => {
       if (!existing) {
         itemMap.set(item.link, item);
       } else if (!existing._hint && item._hint) {
-        itemMap.set(item.link, item);
+        // New copy wins on round hint — but keep existing region if new lacks one
+        itemMap.set(item.link, item._region ? item : { ...item, _region: existing._region });
+      } else if (!existing._region && item._region) {
+        // Existing keeps round-hint advantage; borrow the region tag
+        itemMap.set(item.link, { ...existing, _region: item._region });
       }
     }
 

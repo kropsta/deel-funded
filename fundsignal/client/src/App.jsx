@@ -35,6 +35,9 @@ function applyFilters(results, filters) {
         return false;
       }
     }
+    if (filters.region && filters.region !== 'All Regions') {
+      if (r.region !== filters.region) return false;
+    }
     if (filters.timeRange !== '7d' && r.publishedDate) {
       const ageDays = (Date.now() - new Date(r.publishedDate)) / 86400e3;
       if (filters.timeRange === '1d'  && ageDays > 1)  return false;
@@ -59,7 +62,7 @@ export default function App() {
   const [lastScan, setLastScan] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [queryCount, setQueryCount] = useState(20);
-  const [filters, setFilters] = useState({ roundType: 'All', timeRange: '7d', search: '' });
+  const [filters, setFilters] = useState({ roundType: 'All', timeRange: '7d', region: 'All Regions', search: '' });
   const [queue, setQueue] = useState(loadQueue);
 
   useEffect(() => {
