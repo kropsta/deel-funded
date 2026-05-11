@@ -202,12 +202,15 @@ const TBS_MAP = { '1d': 'qdr:d', '7d': 'qdr:w', '30d': 'qdr:m' };
 async function runQuery({ q, hint }, tbs = 'qdr:w') {
   const res = await axios.post(
     SERPER_NEWS_URL,
-    { q, tbs, num: 50 },
+    { q, tbs, num: 10 },
     {
       headers: { 'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json' },
       timeout: 12000,
     }
   );
+  if (!res.data.news) {
+    console.error('Serper news missing:', JSON.stringify(res.data).slice(0, 200));
+  }
   return (res.data.news || []).map((item) => ({ ...item, _hint: hint }));
 }
 
@@ -226,7 +229,12 @@ app.post('/api/scan', async (req, res) => {
     // 1. Run all news queries concurrently
     const settled = await Promise.allSettled(QUERIES.map((q) => runQuery(q, tbs)));
     const allItems = [];
-    settled.forEach((r) => { if (r.status === 'fulfilled') allItems.push(...r.value); });
+    let failCount = 0;
+    settled.forEach((r, i) => {
+      if (r.status === 'fulfilled') allItems.push(...r.value);
+      else { failCount++; console.error(`Query ${i} failed:`, r.reason?.message); }
+    });
+    console.log(`Queries: ${settled.length - failCount} ok, ${failCount} failed. Raw items: ${allItems.length}`);
 
     // 2. Deduplicate — prefer the copy that carries a roundHint
     const itemMap = new Map();
@@ -256,10 +264,10 @@ app.post('/api/scan', async (req, res) => {
     });
 
     // 5. LinkedIn lookup — prioritise results with a known amount (more actionable),
-    //    cap at 40 lookups to keep API credit usage reasonable
+    //    cap at 20 lookups to keep API credit usage and latency reasonable
     const withAmount    = unique.filter((r) => r.amount);
     const withoutAmount = unique.filter((r) => !r.amount);
-    const toLookup      = [...withAmount, ...withoutAmount].slice(0, 40);
+    const toLookup      = [...withAmount, ...withoutAmount].slice(0, 20);
 
     const linkedInResults = await Promise.allSettled(
       toLookup.map((r) => findLinkedIn(r.companyName))
