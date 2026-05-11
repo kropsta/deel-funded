@@ -164,7 +164,6 @@ const TBS_MAP = {
   '1d':  'qdr:d',
   '7d':  'qdr:w',
   '30d': 'qdr:m',
-  '90d': 'qdr:y', // Serper has no 90d option; use year and let client filter to 90d
 };
 
 async function runQuery({ q, hint }, tbs = 'qdr:w') {

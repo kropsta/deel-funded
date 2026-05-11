@@ -39,7 +39,6 @@ function applyFilters(results, filters) {
       const ageDays = (Date.now() - new Date(r.publishedDate)) / 86400e3;
       if (filters.timeRange === '1d'  && ageDays > 1)  return false;
       if (filters.timeRange === '30d' && ageDays > 30) return false;
-      if (filters.timeRange === '90d' && ageDays > 90) return false;
     }
     if (filters.search) {
       const q = filters.search.toLowerCase();
